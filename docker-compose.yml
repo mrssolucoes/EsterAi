@@ -2,73 +2,123 @@ version: '3.8'
 
 services:
   # ---------------------------------------------------------------
+  # REDIS (Memória Rápida) - Deve iniciar primeiro
+  # ---------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - esterai-network
+
+  # ---------------------------------------------------------------
+  # POSTGRES (Banco de Dados) - Deve iniciar antes do N8N
+  # ---------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-SenhaSegura123!}
+      - POSTGRES_DB=n8n
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - esterai-network
+
+  # ---------------------------------------------------------------
   # EVOLUTION API (O WhatsApp)
   # ---------------------------------------------------------------
   evolution:
     image: atendai/evolution-api:v2.1.1
-    restart: always
+    restart: unless-stopped
     environment:
-      - SERVER_URL=https://evolution.hallsync.com.br
+      - SERVER_URL=${SERVER_URL:-https://evolution.hallsync.com.br}
       - DOCKER_ENV=true
-      # O Coolify vai preencher esta senha pra gente:
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-TroqueParaSuaSenhaSecreta123}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
+      - LOG_LEVEL=ERROR
+      - LOG_COLOR=false
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
     depends_on:
-      - redis
-
-  # REDIS (Memória Rápida)
-  redis:
-    image: redis:alpine
-    restart: always
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - esterai-network
 
   # ---------------------------------------------------------------
   # N8N (O Cérebro)
   # ---------------------------------------------------------------
   n8n:
-    image: n8nio/n8n
-    restart: always
+    image: n8nio/n8n:latest
+    restart: unless-stopped
     environment:
       - GENERIC_TIMEZONE=America/Sao_Paulo
       - TZ=America/Sao_Paulo
-      - N8N_HOST=n8n.hallsync.com.br
+      - N8N_HOST=${N8N_HOST:-n8n.hallsync.com.br}
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://n8n.hallsync.com.br/
+      - WEBHOOK_URL=${WEBHOOK_URL:-https://n8n.hallsync.com.br/}
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=n8n
-      # O Coolify vai preencher esta senha pra gente:
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-SenhaSegura123!}
+      - N8N_LOG_LEVEL=info
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    networks:
+      - esterai-network
 
-  # BANCO DE DADOS
-  postgres:
-    image: postgres:16
-    restart: always
-    environment:
-      - POSTGRES_USER=n8n
-      # O Coolify vai preencher esta senha pra gente:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=n8n
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+networks:
+  esterai-network:
+    driver: bridge
 
 volumes:
   n8n_data:
+    driver: local
   postgres_data:
+    driver: local
   evolution_instances:
+    driver: local
   evolution_store:
+    driver: local
   redis_data:
+    driver: local

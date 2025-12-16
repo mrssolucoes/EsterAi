@@ -69,7 +69,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (O Motor) ---
+  # --- EVOLUTION API (O Motor - Mantivemos a v2.2.2 que existe) ---
   evolution-api:
     image: atendai/evolution-api:v2.2.2
     restart: always
@@ -100,9 +100,9 @@ services:
       - postgres
       - redis
 
-  # --- EVOLUTION MANAGER (O Painel Visual Novo) ---
+  # --- EVOLUTION MANAGER (CORRIGIDO PARA LATEST) ---
   evolution-manager:
-    image: atendai/evolution-manager:v2.2.2 
+    image: atendai/evolution-manager:latest
     restart: always
     ports:
       - "8181:81"

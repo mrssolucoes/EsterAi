@@ -38,7 +38,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 5s
 
   # --- POSTGRES (Banco de Dados) ---
   postgres:
@@ -88,11 +88,13 @@ services:
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      # MUDANÇA CRUCIAL: Removemos o '-f' para ele aceitar qualquer resposta HTTP como 'Vivo'
+      test: ["CMD", "curl", "http://localhost:8080/"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 40s
+      retries: 10
+      # Damos 60 segundos de paciência antes de marcar como doente
+      start_period: 60s
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store

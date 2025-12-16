@@ -47,7 +47,6 @@ services:
     environment:
       - POSTGRES_USER=${SERVICE_NAME_POSTGRES:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      # O Banco padrão é n8n, o banco 'evolution' foi criado manualmente ou via comando
       - POSTGRES_DB=${SERVICE_NAME_N8N:-n8n}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -81,14 +80,11 @@ services:
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-      # Permissões de CORS (Essencial para o Painel funcionar)
       - CORS_ORIGIN=*
       - CORS_METHODS=POST,GET,PUT,DELETE
       - CORS_CREDENTIALS=true
-      # Banco de Dados
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
-      # Redis
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
     healthcheck:
@@ -106,12 +102,11 @@ services:
 
   # --- EVOLUTION MANAGER (O Painel Visual Novo) ---
   evolution-manager:
-    image: atendai/evolution-manager:v2.1.0
+    image: atendai/evolution-manager:v2.2.2 
     restart: always
     ports:
       - "8181:81"
     environment:
-      # Aponta para a sua URL pública da API (definida no Coolify)
       - VITE_API_URL=${EVOLUTION_API_URL}
     depends_on:
       - evolution-api

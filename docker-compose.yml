@@ -20,6 +20,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=false
+      - N8N_TRUSTED_PROXIES=${N8N_TRUSTED_PROXIES:-loopback,linklocal,uniquelocal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
     depends_on:
       postgres:
